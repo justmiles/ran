@@ -1,11 +1,10 @@
-Ran: a simple static web server written in Go
-=============================================
+# Ran: a simple static web server written in Go
 
 ![Ran](https://raw.githubusercontent.com/m3ng9i/ran/master/ran.gif)
 
 Ran is a simple web server for serving static files.
 
-- Github: <https://github.com/m3ng9i/ran>
+- Github: <https://github.com/justmiles/ran>
 - Docker Hub: <https://hub.docker.com/r/m3ng9i/ran>
 
 ## Features
@@ -39,7 +38,7 @@ Ran is a simple web server for serving static files.
 Use the command below to install the dependencies mentioned above, and build the binary into $GOPATH/bin.
 
 ```bash
-go get -u github.com/m3ng9i/ran
+go get -u github.com/justmiles/ran
 ```
 
 For convenience, you can move the ran binary to a directory in the PATH environment variable.
@@ -64,25 +63,25 @@ docker run --name ran -d -p 8080:8080 -v /public:/web:ro m3ng9i/ran -l -404 /404
 
 You can also download the Ran binary without building it yourself.
 
-[Download Ran binary from the release page](https://github.com/m3ng9i/ran/releases).
+[Download Ran binary from the release page](https://github.com/justmiles/ran/releases).
 
 ## Run Ran
 
 You can start a web server without any options by typing `ran` and pressing return in terminal window. This will use the following default configuration:
 
-Configuration               | Default value
-----------------------------|--------------------------------
-Root directory              | the current working directory
-IP binding                  | 0.0.0.0
-Port                        | 8080
-Index file                  | index.html, index.htm
-List files of directories   | false
-Serve all path              | false
-Gzip                        | true
-Disable caching             | false
-Write cross-origin headers  | false
-Digest auth                 | false
-TLS encryption              | off
+| Configuration              | Default value                 |
+| -------------------------- | ----------------------------- |
+| Root directory             | the current working directory |
+| IP binding                 | 0.0.0.0                       |
+| Port                       | 8080                          |
+| Index file                 | index.html, index.htm         |
+| List files of directories  | false                         |
+| Serve all path             | false                         |
+| Gzip                       | true                          |
+| Disable caching            | false                         |
+| Write cross-origin headers | false                         |
+| Digest auth                | false                         |
+| TLS encryption             | off                           |
 
 Open http://127.0.0.1:8080 in browser to see your website.
 
@@ -264,23 +263,23 @@ Read the source code of [CanBeCompressed()](https://github.com/m3ng9i/go-utils/b
 
 - **v0.1.5**:
 
-    - Add `-b, -bind-ip` for custom IP binding
-    - URL for 404 page now return status 404
+  - Add `-b, -bind-ip` for custom IP binding
+  - URL for 404 page now return status 404
 
 - **v0.1.4**:
 
-    - Add `-no-cache` option to disable content caching
-    - Add `-cors` option to write cross-origin resource sharing headers to the response
-    - Record the X-Real-Ip field in the request header to the log
-    - Fix bug of file not being closed after opening
-    - Use HTML template for directory listing (thanks to @toby)
+  - Add `-no-cache` option to disable content caching
+  - Add `-cors` option to write cross-origin resource sharing headers to the response
+  - Record the X-Real-Ip field in the request header to the log
+  - Fix bug of file not being closed after opening
+  - Use HTML template for directory listing (thanks to @toby)
 
 - **v0.1.3**:
 
-    - Add trailing slash if the request path is a directory and the directory contains a index file.
-    - Add basic auth; add -am, -auth-method option.
-    - Add -sa, -serve-all option to set if skip paths that start with dot.
-    - Print the listening URLs after the server starts.
+  - Add trailing slash if the request path is a directory and the directory contains a index file.
+  - Add basic auth; add -am, -auth-method option.
+  - Add -sa, -serve-all option to set if skip paths that start with dot.
+  - Print the listening URLs after the server starts.
 
 - **v0.1.2**: Add TLS encryption; add custom 401 file.
 - **v0.1.1**: Fix bugs and typos.
@@ -304,4 +303,3 @@ It's a Chinese PinYin and pronounce 燃, means flame burning.
 mengqi <https://github.com/m3ng9i>
 
 If you like this project, please give me a star.
-

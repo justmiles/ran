@@ -1,4 +1,4 @@
-module github.com/m3ng9i/ran
+module github.com/justmiles/ran
 
 go 1.12
 

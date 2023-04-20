@@ -6,192 +6,187 @@ import "flag"
 import "strings"
 import "path/filepath"
 import phelper "github.com/m3ng9i/go-utils/path"
-import "github.com/m3ng9i/ran/server"
-
+import "github.com/justmiles/ran/server"
 
 type TLSPolicy string
-const (
-    TLSRedirect TLSPolicy = "redirect"
-    TLSBoth     TLSPolicy = "both"
-    TLSOnly     TLSPolicy = "only"
-)
 
+const (
+	TLSRedirect TLSPolicy = "redirect"
+	TLSBoth     TLSPolicy = "both"
+	TLSOnly     TLSPolicy = "only"
+)
 
 // TLSOption contains options used in TLS encryption
 type TLSOption struct {
-    PublicKey   string          // Path of public key (certificate)
-    PrivateKey  string          // Path of private key
-    Port        uint            // HTTPS port. Default is DefaultTLSPort.
-    Policy      TLSPolicy       // TLS policy. Default is DefaultTLSPolicy.
+	PublicKey  string    // Path of public key (certificate)
+	PrivateKey string    // Path of private key
+	Port       uint      // HTTPS port. Default is DefaultTLSPort.
+	Policy     TLSPolicy // TLS policy. Default is DefaultTLSPolicy.
 }
 
 const DefaultTLSPort uint = 443
 const DefaultTLSPolicy = TLSOnly
 
-
 // Setting about ran server
 type Setting struct {
-    IP              []string        // IP addresses binded to ran server.
-    Port            uint            // HTTP port. Default is 8080.
-    ShowConf        bool            // If show config info in the log.
-    Debug           bool            // If turns on debug mode. Default is false.
-    TLS             *TLSOption      // If is nil, TLS is off.
-    errorFile401    *string
-    errorFile404    *string
-    server.Config
+	IP           []string   // IP addresses binded to ran server.
+	Port         uint       // HTTP port. Default is 8080.
+	ShowConf     bool       // If show config info in the log.
+	Debug        bool       // If turns on debug mode. Default is false.
+	TLS          *TLSOption // If is nil, TLS is off.
+	errorFile401 *string
+	errorFile404 *string
+	server.Config
 }
-
 
 // check if path of 404 or 401 file is correct and return an server.ErrorFilePath.
 // if the path is not correct, return an error
 // p: path of 404 or 401 file, example: /404.html
 // name: name of the error file, 401 or 404
 func (this *Setting) checkCustomErrorFile(p, name string) (errorFile *server.ErrorFilePath, err error) {
-    newPath := filepath.Join(this.Root, p)
+	newPath := filepath.Join(this.Root, p)
 
-    // check if the custom error file is under root
-    root := this.Root
-    if !strings.HasSuffix(root, string(filepath.Separator)) {
-        root = root + string(filepath.Separator)
-    }
-    if !strings.HasPrefix(newPath, root) {
-        err = fmt.Errorf("Path of %s file can not be out of root directory", name)
-        return
-    }
+	// check if the custom error file is under root
+	root := this.Root
+	if !strings.HasSuffix(root, string(filepath.Separator)) {
+		root = root + string(filepath.Separator)
+	}
+	if !strings.HasPrefix(newPath, root) {
+		err = fmt.Errorf("Path of %s file can not be out of root directory", name)
+		return
+	}
 
-    // check if the file path is exist and not a directory
-    e := phelper.IsExistFile(newPath)
-    if e != nil {
-        err = fmt.Errorf("'%s': %s", newPath, e)
-        return
-    }
+	// check if the file path is exist and not a directory
+	e := phelper.IsExistFile(newPath)
+	if e != nil {
+		err = fmt.Errorf("'%s': %s", newPath, e)
+		return
+	}
 
-    relPath, _ := filepath.Rel(root, newPath)
+	relPath, _ := filepath.Rel(root, newPath)
 
-    errorFile = new(server.ErrorFilePath)
-    errorFile.Abs = newPath
-    errorFile.Rel = "/" + relPath
+	errorFile = new(server.ErrorFilePath)
+	errorFile.Abs = newPath
+	errorFile.Rel = "/" + relPath
 
-    return
+	return
 }
-
 
 func (this *Setting) check() (errmsg []string) {
 
-    if this.Port > 65535 || this.Port <= 0 {
-        errmsg = append(errmsg, "Available HTTP port range is 1-65535")
-    }
+	if this.Port > 65535 || this.Port <= 0 {
+		errmsg = append(errmsg, "Available HTTP port range is 1-65535")
+	}
 
-    for _, index := range this.IndexName {
-        name := filepath.Base(index)
-        if name != index {
-            errmsg = append(errmsg, "Filename of index can not include path separators")
-            break
-        }
-    }
+	for _, index := range this.IndexName {
+		name := filepath.Base(index)
+		if name != index {
+			errmsg = append(errmsg, "Filename of index can not include path separators")
+			break
+		}
+	}
 
-    // If root is not correct, no need to check other variable in Setting structure
-    info, err := os.Stat(this.Root)
-    if err != nil {
-        if os.IsNotExist(err) {
-            errmsg = append(errmsg, fmt.Sprintf("Root '%s' is not exist", this.Root))
-        } else {
-            errmsg = append(errmsg, fmt.Sprintf("Get stat of root directory error: %s", err.Error()))
-        }
-        return
-    } else {
-        if info.IsDir() == false {
-            errmsg = append(errmsg, "Root is not a directory")
-            return
-        }
+	// If root is not correct, no need to check other variable in Setting structure
+	info, err := os.Stat(this.Root)
+	if err != nil {
+		if os.IsNotExist(err) {
+			errmsg = append(errmsg, fmt.Sprintf("Root '%s' is not exist", this.Root))
+		} else {
+			errmsg = append(errmsg, fmt.Sprintf("Get stat of root directory error: %s", err.Error()))
+		}
+		return
+	} else {
+		if info.IsDir() == false {
+			errmsg = append(errmsg, "Root is not a directory")
+			return
+		}
 
-        this.Root, err = filepath.Abs(this.Root)
-        if err != nil {
-            errmsg = append(errmsg, fmt.Sprintf("Can not convert root to absolute form: %s", err.Error()))
-            return
-        }
-    }
+		this.Root, err = filepath.Abs(this.Root)
+		if err != nil {
+			errmsg = append(errmsg, fmt.Sprintf("Can not convert root to absolute form: %s", err.Error()))
+			return
+		}
+	}
 
-    if this.errorFile404 != nil {
-        this.Path404, err = this.checkCustomErrorFile(*this.errorFile404, "404")
-        if err != nil {
-            errmsg = append(errmsg, err.Error())
-        }
-    }
+	if this.errorFile404 != nil {
+		this.Path404, err = this.checkCustomErrorFile(*this.errorFile404, "404")
+		if err != nil {
+			errmsg = append(errmsg, err.Error())
+		}
+	}
 
-    if this.Auth != nil {
-        if this.Auth.Username == "" || this.Auth.Password == "" {
-            errmsg = append(errmsg, "Username or password cannot be empty string")
-        }
+	if this.Auth != nil {
+		if this.Auth.Username == "" || this.Auth.Password == "" {
+			errmsg = append(errmsg, "Username or password cannot be empty string")
+		}
 
-        if this.Auth.Method != server.BasicMethod && this.Auth.Method != server.DigestMethod {
-            errmsg = append(errmsg, "Invalid authentication method")
-        }
+		if this.Auth.Method != server.BasicMethod && this.Auth.Method != server.DigestMethod {
+			errmsg = append(errmsg, "Invalid authentication method")
+		}
 
-        for _, p := range this.Auth.Paths {
-            if !strings.HasPrefix(p, "/") {
-                errmsg = append(errmsg, fmt.Sprintf(`Auth path must start with "/", got %s`, p))
-            }
-        }
+		for _, p := range this.Auth.Paths {
+			if !strings.HasPrefix(p, "/") {
+				errmsg = append(errmsg, fmt.Sprintf(`Auth path must start with "/", got %s`, p))
+			}
+		}
 
-        if this.errorFile401 != nil {
-            this.Path401, err = this.checkCustomErrorFile(*this.errorFile401, "401")
-            if err != nil {
-                errmsg = append(errmsg, err.Error())
-            }
-        }
-    }
+		if this.errorFile401 != nil {
+			this.Path401, err = this.checkCustomErrorFile(*this.errorFile401, "401")
+			if err != nil {
+				errmsg = append(errmsg, err.Error())
+			}
+		}
+	}
 
-    if this.TLS != nil {
-        if this.TLS.PublicKey == "" || this.TLS.PrivateKey == "" {
-            errmsg = append(errmsg, "Both certificate path and key path should be provided")
-        } else {
-            if err := phelper.IsNonEmptyFile(this.TLS.PublicKey); err != nil {
-                errmsg = append(errmsg, fmt.Sprintf("'%s': %s", this.TLS.PublicKey, err))
-            }
-            if err := phelper.IsNonEmptyFile(this.TLS.PrivateKey); err != nil {
-                errmsg = append(errmsg, fmt.Sprintf("'%s': %s", this.TLS.PrivateKey, err))
-            }
-        }
+	if this.TLS != nil {
+		if this.TLS.PublicKey == "" || this.TLS.PrivateKey == "" {
+			errmsg = append(errmsg, "Both certificate path and key path should be provided")
+		} else {
+			if err := phelper.IsNonEmptyFile(this.TLS.PublicKey); err != nil {
+				errmsg = append(errmsg, fmt.Sprintf("'%s': %s", this.TLS.PublicKey, err))
+			}
+			if err := phelper.IsNonEmptyFile(this.TLS.PrivateKey); err != nil {
+				errmsg = append(errmsg, fmt.Sprintf("'%s': %s", this.TLS.PrivateKey, err))
+			}
+		}
 
-        if this.TLS.Port > 65535 || this.TLS.Port <= 0 {
-            errmsg = append(errmsg, "Available HTTPS port range is 1-65535")
-        }
+		if this.TLS.Port > 65535 || this.TLS.Port <= 0 {
+			errmsg = append(errmsg, "Available HTTPS port range is 1-65535")
+		}
 
-        if this.TLS.Policy != TLSRedirect && this.TLS.Policy != TLSBoth && this.TLS.Policy != TLSOnly {
-            errmsg = append(errmsg, `Value of TLS policy could only be "redirect", "both" or "only"`)
-            return // ignore the following checking
-        }
+		if this.TLS.Policy != TLSRedirect && this.TLS.Policy != TLSBoth && this.TLS.Policy != TLSOnly {
+			errmsg = append(errmsg, `Value of TLS policy could only be "redirect", "both" or "only"`)
+			return // ignore the following checking
+		}
 
-        if this.TLS.Policy != TLSOnly && this.TLS.Port == this.Port {
-            errmsg = append(errmsg, "HTTP port and HTTPS port cannot be the same.")
-        }
-    }
+		if this.TLS.Policy != TLSOnly && this.TLS.Port == this.Port {
+			errmsg = append(errmsg, "HTTP port and HTTPS port cannot be the same.")
+		}
+	}
 
-    return
+	return
 }
-
 
 func (this *Setting) String() string {
 
-https := `TLS: on
+	https := `TLS: on
 Certificate: %s
 Private key: %s
 TLS port: %d
 TLS policy: %s`
 
-    if this.TLS != nil {
-        https = fmt.Sprintf(https, this.TLS.PublicKey, this.TLS.PrivateKey, this.TLS.Port, this.TLS.Policy)
-    } else {
-        https = "TLS: off"
-    }
+	if this.TLS != nil {
+		https = fmt.Sprintf(https, this.TLS.PublicKey, this.TLS.PrivateKey, this.TLS.Port, this.TLS.Policy)
+	} else {
+		https = "TLS: off"
+	}
 
-    auth := "<None>"
-    if this.Auth != nil {
-        auth = string(this.Auth.Method)
-    }
+	auth := "<None>"
+	if this.Auth != nil {
+		auth = string(this.Auth.Method)
+	}
 
-s := `Root: %s
+	s := `Root: %s
 Port: %d
 Path404: %s
 IndexName: %s
@@ -205,60 +200,57 @@ Auth: %s
 Path401: %s
 %s`
 
-    path404 := "<None>"
-    if this.Path404 != nil {
-        path404 = this.Path404.Rel
-    }
+	path404 := "<None>"
+	if this.Path404 != nil {
+		path404 = this.Path404.Rel
+	}
 
-    path401 := "<None>"
-    if this.Path401 != nil {
-        path401 = this.Path401.Rel
-    }
+	path401 := "<None>"
+	if this.Path401 != nil {
+		path401 = this.Path401.Rel
+	}
 
-    s = fmt.Sprintf(s,
-                    this.Root,
-                    this.Port,
-                    path404,
-                    strings.Join(this.IndexName, ", "),
-                    this.ListDir,
-                    this.ServeAll,
-                    this.Gzip,
-                    this.NoCache,
-                    this.CORS,
-                    this.Debug,
-                    auth,
-                    path401,
-                    https)
+	s = fmt.Sprintf(s,
+		this.Root,
+		this.Port,
+		path404,
+		strings.Join(this.IndexName, ", "),
+		this.ListDir,
+		this.ServeAll,
+		this.Gzip,
+		this.NoCache,
+		this.CORS,
+		this.Debug,
+		auth,
+		path401,
+		https)
 
-    return s
+	return s
 }
-
 
 var Config *Setting
 
-
 func defaultConfig() (c *Setting, err error) {
-    c = new(Setting)
+	c = new(Setting)
 
-    c.Root, err = os.Getwd()
-    if err != nil {
-        return
-    }
+	c.Root, err = os.Getwd()
+	if err != nil {
+		return
+	}
 
-    c.Port          = 8080
-    c.Path404       = nil
-    c.IndexName     = []string{"index.html", "index.htm"}
-    c.ListDir       = false
-    c.ServeAll      = false
-    c.Gzip          = true
-    c.Debug         = false
+	c.Port = 8080
+	c.Path404 = nil
+	c.IndexName = []string{"index.html", "index.htm"}
+	c.ListDir = false
+	c.ServeAll = false
+	c.Gzip = true
+	c.Debug = false
 
-    return
+	return
 }
 
-
 func usage() {
-s := `Ran: a simple static web server
+	s := `Ran: a simple static web server
 
 Usage: ran [Options...]
 
@@ -328,168 +320,165 @@ Author:
     <https://github.com/m3ng9i>
     <http://mengqi.info>
 `
-fmt.Printf(s)
-os.Exit(0)
+	fmt.Printf(s)
+	os.Exit(0)
 }
-
 
 func LoadConfig(versionInfo string) {
 
-    var err error
-    Config, err = defaultConfig()
-    if err != nil {
-        fmt.Fprintf(os.Stderr, err.Error())
-        os.Exit(1)
-    }
+	var err error
+	Config, err = defaultConfig()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, err.Error())
+		os.Exit(1)
+	}
 
-    var configPath, bindip, root, path404, authMethod, auth, path401, certPath, keyPath, tlsPolicy string
-    var port, tlsPort uint
-    var indexName server.Index
-    var version, help, makeCert bool
+	var configPath, bindip, root, path404, authMethod, auth, path401, certPath, keyPath, tlsPolicy string
+	var port, tlsPort uint
+	var indexName server.Index
+	var version, help, makeCert bool
 
-    flag.StringVar(&configPath, "c",      "", "Path of config file")
-    flag.StringVar(&configPath, "config", "", "Path of config file")
+	flag.StringVar(&configPath, "c", "", "Path of config file")
+	flag.StringVar(&configPath, "config", "", "Path of config file")
 
-    if configPath != "" {
-        // TODO: load config file
-    }
+	if configPath != "" {
+		// TODO: load config file
+	}
 
-    flag.StringVar(&bindip,             "b",                "",      "IP addresses binded to ran server")
-    flag.StringVar(&bindip,             "bind-ip",          "",      "IP addresses binded to ran server")
-    flag.UintVar(  &port,               "p",                0,       "HTTP port")
-    flag.UintVar(  &port,               "port",             0,       "HTTP port")
-    flag.StringVar(&root,               "r",                "",      "Root path of the website")
-    flag.StringVar(&root,               "root",             "",      "Root path of the website")
-    flag.StringVar(&path404,            "404",              "",      "Path of a custom 404 file")
-    flag.StringVar(&path401,            "401",              "",      "Path of a custom 401 file")
-    flag.StringVar(&authMethod,         "am",               "basic", "authentication method")
-    flag.StringVar(&authMethod,         "auth-method",      "basic", "authentication method")
-    flag.StringVar(&auth,               "a",                "",      "Username and password of auth, separate by colon")
-    flag.StringVar(&auth,               "auth",             "",      "Username and password of auth, separate by colon")
-    flag.Var(      &indexName,          "i",                         "File name of index, separate by colon")
-    flag.Var(      &indexName,          "index",                     "File name of index, separate by colon")
-    flag.BoolVar(  &Config.ListDir,     "l",                false,   "Show file list of a directory")
-    flag.BoolVar(  &Config.ListDir,     "listdir",          false,   "Show file list of a directory")
-    flag.BoolVar(  &Config.ServeAll,    "sa",               false,   "Serve all paths even if the path is start with dot")
-    flag.BoolVar(  &Config.ServeAll,    "serve-all",        false,   "Serve all paths even if the path is start with dot")
-    flag.BoolVar(  &Config.Gzip,        "g",                true,    "Turn on/off gzip compression")
-    flag.BoolVar(  &Config.Gzip,        "gzip",             true,    "Turn on/off gzip compression")
-    flag.BoolVar(  &Config.NoCache,     "nc",               false,   "If send no-cache header")
-    flag.BoolVar(  &Config.NoCache,     "no-cache",         false,   "If send no-cache header")
-    flag.BoolVar(  &Config.CORS,        "cors",             false,   "If send CORS headers")
-    flag.BoolVar(  &Config.ShowConf,    "showconf",         false,   "If show config info in the log")
-    flag.BoolVar(  &Config.Debug,       "debug",            false,   "Turn on debug mode")
-    flag.BoolVar(  &version,            "v",                false,   "Show version information")
-    flag.BoolVar(  &version,            "version",          false,   "Show version information")
-    flag.BoolVar(  &help,               "h",                false,   "Show help message")
-    flag.BoolVar(  &help,               "help",             false,   "Show help message")
-    flag.BoolVar(  &makeCert,           "make-cert",        false,   "Generate a self-signed certificate and a private key")
-    flag.StringVar(&certPath,           "cert",             "",      "Path of certificate")
-    flag.StringVar(&keyPath,            "key",              "",      "Path of private key")
-    flag.UintVar(  &tlsPort,            "tls-port",         0,       "HTTPS port")
-    flag.StringVar(&tlsPolicy,          "tls-policy",       "",      "TLS policy")
+	flag.StringVar(&bindip, "b", "", "IP addresses binded to ran server")
+	flag.StringVar(&bindip, "bind-ip", "", "IP addresses binded to ran server")
+	flag.UintVar(&port, "p", 0, "HTTP port")
+	flag.UintVar(&port, "port", 0, "HTTP port")
+	flag.StringVar(&root, "r", "", "Root path of the website")
+	flag.StringVar(&root, "root", "", "Root path of the website")
+	flag.StringVar(&path404, "404", "", "Path of a custom 404 file")
+	flag.StringVar(&path401, "401", "", "Path of a custom 401 file")
+	flag.StringVar(&authMethod, "am", "basic", "authentication method")
+	flag.StringVar(&authMethod, "auth-method", "basic", "authentication method")
+	flag.StringVar(&auth, "a", "", "Username and password of auth, separate by colon")
+	flag.StringVar(&auth, "auth", "", "Username and password of auth, separate by colon")
+	flag.Var(&indexName, "i", "File name of index, separate by colon")
+	flag.Var(&indexName, "index", "File name of index, separate by colon")
+	flag.BoolVar(&Config.ListDir, "l", false, "Show file list of a directory")
+	flag.BoolVar(&Config.ListDir, "listdir", false, "Show file list of a directory")
+	flag.BoolVar(&Config.ServeAll, "sa", false, "Serve all paths even if the path is start with dot")
+	flag.BoolVar(&Config.ServeAll, "serve-all", false, "Serve all paths even if the path is start with dot")
+	flag.BoolVar(&Config.Gzip, "g", true, "Turn on/off gzip compression")
+	flag.BoolVar(&Config.Gzip, "gzip", true, "Turn on/off gzip compression")
+	flag.BoolVar(&Config.NoCache, "nc", false, "If send no-cache header")
+	flag.BoolVar(&Config.NoCache, "no-cache", false, "If send no-cache header")
+	flag.BoolVar(&Config.CORS, "cors", false, "If send CORS headers")
+	flag.BoolVar(&Config.ShowConf, "showconf", false, "If show config info in the log")
+	flag.BoolVar(&Config.Debug, "debug", false, "Turn on debug mode")
+	flag.BoolVar(&version, "v", false, "Show version information")
+	flag.BoolVar(&version, "version", false, "Show version information")
+	flag.BoolVar(&help, "h", false, "Show help message")
+	flag.BoolVar(&help, "help", false, "Show help message")
+	flag.BoolVar(&makeCert, "make-cert", false, "Generate a self-signed certificate and a private key")
+	flag.StringVar(&certPath, "cert", "", "Path of certificate")
+	flag.StringVar(&keyPath, "key", "", "Path of private key")
+	flag.UintVar(&tlsPort, "tls-port", 0, "HTTPS port")
+	flag.StringVar(&tlsPolicy, "tls-policy", "", "TLS policy")
 
-    flag.Usage = usage
+	flag.Usage = usage
 
-    flag.Parse()
+	flag.Parse()
 
-    if help {
-        usage()
-    }
+	if help {
+		usage()
+	}
 
-    if version {
-        fmt.Println(versionInfo)
-        os.Exit(0)
-    }
+	if version {
+		fmt.Println(versionInfo)
+		os.Exit(0)
+	}
 
-    if makeCert {
-        err = makeCertFiles(certPath, keyPath, false)
-        if err != nil {
-            fmt.Fprintf(os.Stderr, "Error: %s\n", err)
-            os.Exit(1)
-        }
-        fmt.Println("Certificate and private key are created")
-        os.Exit(0)
-    }
+	if makeCert {
+		err = makeCertFiles(certPath, keyPath, false)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error: %s\n", err)
+			os.Exit(1)
+		}
+		fmt.Println("Certificate and private key are created")
+		os.Exit(0)
+	}
 
-    // load TLS config
-    if certPath != "" || keyPath != "" || tlsPort > 0 || tlsPolicy != "" {
-        if Config.TLS == nil {
-            Config.TLS = new(TLSOption)
-        }
-        Config.TLS.PublicKey    = certPath
-        Config.TLS.PrivateKey   = keyPath
-        Config.TLS.Port         = tlsPort
-        Config.TLS.Policy       = TLSPolicy(tlsPolicy)
+	// load TLS config
+	if certPath != "" || keyPath != "" || tlsPort > 0 || tlsPolicy != "" {
+		if Config.TLS == nil {
+			Config.TLS = new(TLSOption)
+		}
+		Config.TLS.PublicKey = certPath
+		Config.TLS.PrivateKey = keyPath
+		Config.TLS.Port = tlsPort
+		Config.TLS.Policy = TLSPolicy(tlsPolicy)
 
-    }
+	}
 
-    // set default value for Config.TLS
-    if Config.TLS != nil {
-        if Config.TLS.Port == 0 {
-            Config.TLS.Port = DefaultTLSPort
-        }
-        if Config.TLS.Policy == "" {
-            Config.TLS.Policy = DefaultTLSPolicy
-        }
-    }
+	// set default value for Config.TLS
+	if Config.TLS != nil {
+		if Config.TLS.Port == 0 {
+			Config.TLS.Port = DefaultTLSPort
+		}
+		if Config.TLS.Policy == "" {
+			Config.TLS.Policy = DefaultTLSPolicy
+		}
+	}
 
-    Config.IP, err = getIPs(bindip)
-    if err != nil {
-        fmt.Fprintf(os.Stderr, "Error: %s\n", err)
-        os.Exit(1)
-    }
+	Config.IP, err = getIPs(bindip)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error: %s\n", err)
+		os.Exit(1)
+	}
 
-    if port > 0 {
-        Config.Port = port
-    }
+	if port > 0 {
+		Config.Port = port
+	}
 
-    if root != "" {
-        Config.Root = root
-    }
+	if root != "" {
+		Config.Root = root
+	}
 
-    if path404 != "" {
-        Config.errorFile404 = &path404
-    }
+	if path404 != "" {
+		Config.errorFile404 = &path404
+	}
 
-    if len(indexName) > 0 {
-        Config.IndexName = indexName
-    }
+	if len(indexName) > 0 {
+		Config.IndexName = indexName
+	}
 
-    if auth != "" {
-        if Config.Auth == nil {
-            Config.Auth = new(server.Auth)
-        }
-        authPair := strings.SplitN(auth, ":", 2)
-        if len(authPair) != 2 {
-            fmt.Fprintln(os.Stderr, "Config error: format of auth not correct")
-            os.Exit(1)
-        }
-        Config.Auth.Username = authPair[0]
-        Config.Auth.Password = authPair[1]
-        Config.Auth.Method = server.AuthMethod(strings.ToLower(authMethod))
+	if auth != "" {
+		if Config.Auth == nil {
+			Config.Auth = new(server.Auth)
+		}
+		authPair := strings.SplitN(auth, ":", 2)
+		if len(authPair) != 2 {
+			fmt.Fprintln(os.Stderr, "Config error: format of auth not correct")
+			os.Exit(1)
+		}
+		Config.Auth.Username = authPair[0]
+		Config.Auth.Password = authPair[1]
+		Config.Auth.Method = server.AuthMethod(strings.ToLower(authMethod))
 
-        if path401 != "" {
-            Config.errorFile401 = &path401
-        }
-    }
+		if path401 != "" {
+			Config.errorFile401 = &path401
+		}
+	}
 
-    // check Config
-    errmsg := Config.check()
-    if len(errmsg) == 1 {
-        fmt.Fprintf(os.Stderr, "Config error: %s\n", errmsg[0])
-        os.Exit(1)
-    } else if len(errmsg) > 1 {
-        fmt.Fprintln(os.Stderr, "Config error:")
-        for i, msg := range errmsg {
-            fmt.Fprintf(os.Stderr, "%d. %s\n", i + 1, msg)
-        }
-        os.Exit(1)
-    }
+	// check Config
+	errmsg := Config.check()
+	if len(errmsg) == 1 {
+		fmt.Fprintf(os.Stderr, "Config error: %s\n", errmsg[0])
+		os.Exit(1)
+	} else if len(errmsg) > 1 {
+		fmt.Fprintln(os.Stderr, "Config error:")
+		for i, msg := range errmsg {
+			fmt.Fprintf(os.Stderr, "%d. %s\n", i+1, msg)
+		}
+		os.Exit(1)
+	}
 
-    createLogger(Config.Debug)
+	createLogger(Config.Debug)
 
-    return
+	return
 }
-
-
